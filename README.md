@@ -46,6 +46,7 @@ llm-qbank-bridge/
 ├── ui.html               控制台页面
 ├── start.bat             Windows 启动器（自动找可用 Python，前台运行）
 ├── config.example.json   配置模板（复制为 config.json 后填写）
+├── docs/                 发布说明等文档
 └── qbank/                打包输出目录（git 忽略，运行时生成）
 ```
 
@@ -61,9 +62,15 @@ python qbank_bridge.py
 
 Windows 下也可以双击 `start.bat`：它会自动逐个探测可用的 Python（会跳过微软商店那个假的 `python.exe`），前台运行并把日志留在窗口里，关掉窗口即停止服务。
 
-### 方式二：单文件 exe
+### 方式二：单文件 exe（推荐给不想装 Python 的人）
 
-打包产物放在 `qbank/`，双击 `qbank.exe` 即可。首次运行会在 exe 同级目录生成 `config.json`。**不要放在 `C:\Program Files` 这类只读目录**，否则配置和缓存写不进去。
+到 [Releases](https://github.com/giaoo-tt/llm-qbank-bridge/releases) 下载 `qbank-v1.0.0-win64.zip`（约 8.2 MB），解压后双击 `qbank.exe` 即可，**无需安装 Python**。
+
+- zip 内含 `qbank.exe`、`config.example.json` 和一份 `使用说明.txt`。
+- 首次运行会在 exe 同级目录生成 `config.json`，**不要放在 `C:\Program Files` 这类只读目录**，否则配置和缓存写不进去。
+- exe 未做数字签名，首次运行 SmartScreen 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」。
+
+发布说明见 [`docs/release-v1.0.0.md`](docs/release-v1.0.0.md)；想自己构建见下方「[打包](#打包)」。
 
 ### 配置
 
