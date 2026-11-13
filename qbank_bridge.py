@@ -741,6 +741,82 @@ _INFLIGHT: dict = {}
 
 
 # --------------------------------------------------------------------------- #
+# 题库海格式兼容：把模型答案对回原选项原文
+# --------------------------------------------------------------------------- #
+
+def _answer_norm(text: str) -> str:
+    text = strip_html(str(text or ""))
+    text = re.sub(r"^\s*[A-Za-z]\s*[.．、:：\)]\s*", "", text)
+    return re.sub(r"[\s\u00a0\u3000，。、；：,.;:!?！？\"'“”‘’()（）\[\]【】<>《》]+", "", text).lower()
+
+
+def pick_option_indexes(values, raw_options):
+    """把模型给出的答案对回选项下标，尽量容忍标点、前缀、字母、轻微差异。"""
+    raws = [str(item) for item in raw_options]
+    norms = [_answer_norm(item) for item in raws]
+    picked = []
+    for value in values:
+        text = strip_html(str(value)).strip()
+        if not text:
+            continue
+        index = None
+        for i, raw in enumerate(raws):
+            if text == raw.strip():
+                index = i
+                break
+        if index is None:
+            target = _answer_norm(text)
+            if target:
+                for i, item in enumerate(norms):
+                    if item and item == target:
+                        index = i
+                        break
+        if index is None:
+            letter = re.match(r"^([A-Za-z])\s*$", text) or re.match(r"^([A-Za-z])\s*[.．、:：\)]", text)
+            if letter:
+                i = ord(letter.group(1).upper()) - 65
+                if 0 <= i < len(raws):
+                    index = i
+        if index is None:
+            best_score, best_index = 0.0, -1
+            for i, item in enumerate(norms):
+                if not item:
+                    continue
+                score = difflib.SequenceMatcher(None, _answer_norm(text), item).ratio()
+                if score > best_score:
+                    best_score, best_index = score, i
+            if best_index >= 0 and best_score >= 0.72:
+                index = best_index
+        if index is not None and index not in picked:
+            picked.append(index)
+    return picked
+
+
+def build_th_answer(values, raw_options, qtype: str):
+    """拼成题库海脚本能吃的答案：选择/多选回选项原文数组，判断回「对/错」。"""
+    raws = [str(item).strip() for item in (raw_options or [])]
+    indexes = pick_option_indexes(values, raws)
+
+    if qtype == "3":
+        for value in values:
+            token = judge_token(str(value))
+            if token:
+                return token
+        if indexes:
+            token = judge_token(raws[indexes[0]])
+            if token:
+                return token
+        return ""
+
+    if indexes:
+        return [raws[i] for i in indexes]
+
+    # 选项对不上（填空题、图片题等）：原样回一个字符串，让脚本自己判断能不能用
+    plain = " / ".join(str(item) for item in values if str(item).strip())
+    return plain[:200]
+
+
+# --------------------------------------------------------------------------- #
 # 响应包
 # --------------------------------------------------------------------------- #
 
@@ -836,6 +912,11 @@ def patch_userscript(text: str, port: int) -> dict:
     if "https://search.tikuhai.com" in text:
         text = text.replace("https://search.tikuhai.com", local_base)
         changes.append("接口地址已改为 " + local_base)
+
+    # 4b) 题库海那一套脚本（POST {key, question} 到 api1 + "/search"）
+    if '"http://api.tikuhai.com"' in text:
+        text = text.replace('"http://api.tikuhai.com"', '"%s"' % local_base)
+        changes.append("题库海接口已改为 %s/search" % local_base)
 
     # 5) 放开 https 协议限制
     if 'baseUrl.protocol !== "https:"' in text:
@@ -969,6 +1050,8 @@ def make_handler():
 
             if path == SEARCH_PATH:
                 return self.handle_search()
+            if path == "/search":
+                return self.handle_th_search()
             if path == "/api/config":
                 return self.handle_config()
             if path == "/api/test":
@@ -1067,6 +1150,73 @@ def make_handler():
             stat("none")
             log("无答案：%s → %s" % (preview, (result.get("raw") or "")[:60]), "warn")
             return self._json(200, envelope_none(stem, result.get("raw") or "模型未给出可用答案", elapsed))
+
+        # -- 题库海同形接口（老式第三方题库脚本直连本机） --------------------- #
+        def handle_th_search(self):
+            """POST /search：收 {key, question, options, type}，回 {code, data:{answer}}"""
+            with CFG_LOCK:
+                cfg = dict(CONFIG)
+
+            payload = self._json_body()
+            token = str(payload.get("key") or self.headers.get("X-Consumer-Token") or "").strip()
+            stem = strip_html(str(payload.get("question") or "")).strip()
+            raw_options = payload.get("options")
+            raw_options = [str(item) for item in raw_options] if isinstance(raw_options, list) else []
+            qtype = str(payload.get("type") or "0").strip() or "0"
+            preview = re.sub(r"\s+", " ", stem)[:36]
+            stat("total")
+
+            expected = (cfg.get("access_token") or "").strip()
+            auth_mode = (cfg.get("auth_mode") or "strict").lower()
+            if auth_mode == "strict" and expected:
+                if not token:
+                    record_auth("none", "", preview)
+                    log("收到 /search 请求，但没带密钥：%s" % preview, "warn")
+                    return self._json(200, {"code": -1, "data": {},
+                                            "msg": "没填密钥：把本地窗口里的 %s 填进脚本的题库密钥" % expected})
+                if not hmac.compare_digest(token, expected):
+                    record_auth("mismatch", token, preview)
+                    log("密钥不匹配：脚本带来的是「%s」，本地是「%s」" % (token, expected), "err")
+                    return self._json(200, {"code": -1, "data": {},
+                                            "msg": "密钥不匹配：脚本里是「%s」，本地是「%s」" % (token, expected)})
+            record_auth("ok", token, preview)
+
+            if not stem:
+                return self._json(200, {"code": -1, "data": {}, "msg": "题干为空"})
+
+            options = [strip_html(item) for item in raw_options if item.strip()]
+
+            started = time.time()
+            try:
+                result, cached = answer_with_cache(cfg, stem, options, qtype)
+            except concurrent.futures.TimeoutError:
+                stat("error")
+                log("超时：%s" % preview, "err")
+                return self._json(200, {"code": -1, "data": {}, "msg": "本地桥等待超时，请重试"})
+            except Exception as exc:  # noqa: BLE001
+                stat("error")
+                message = str(exc) or "模型调用失败"
+                log("失败：%s → %s" % (preview, message), "err")
+                return self._json(200, {"code": -1, "data": {}, "msg": message})
+
+            elapsed = int((time.time() - started) * 1000)
+            if cached:
+                stat("cache_hits")
+            answer = build_th_answer(result["values"], raw_options, qtype)
+            if answer:
+                stat("ok")
+                stat("total_ms", result.get("elapsed_ms") or elapsed)
+                log("%s：%s → %s（%dms）" % (
+                    "缓存命中" if cached else "模型作答",
+                    preview,
+                    str(answer)[:40],
+                    elapsed,
+                ), "ok")
+            else:
+                stat("none")
+                log("无答案：%s → %s" % (preview, (result.get("raw") or "")[:60]), "warn")
+            return self._json(200, {"code": 1, "msg": "ok", "data": {
+                "answer": answer, "num": "", "usenum": ""}})
 
         # -- 配置 ------------------------------------------------------------ #
         def handle_config(self):

@@ -112,6 +112,7 @@ http://127.0.0.1:8765
 | POST | `/api/cache/clear` | 清空答案缓存 |
 | POST | `/api/usage/reset` | 重置用量（`{"scope":"today"}` 或 `all`） |
 | POST | `/api/open/v1/search/exact` | **搜题主接口**（题库接口同形） |
+| POST | `/search` | 题库海格式兼容接口，给只会说 `{key, question}` 的老脚本用 |
 
 ### 搜题请求
 
@@ -147,6 +148,28 @@ X-Consumer-Token: llm-xxxxxxxx
 ```
 
 出错时 `success` 为 `false`，`error.code` 可能是 `AUTH_MISSING`、`AUTH_MISMATCH`、`UPSTREAM_ERROR` 等。
+
+### 题库海格式兼容（`POST /search`）
+
+有些老脚本（例如内置「题库海 / 一之 / free4」那类）不会说上面这套协议，而是发：
+
+```http
+POST /search
+Content-Type: application/json
+
+{ "key": "llm-xxxxxxxx", "question": "题干文字", "options": ["A、xxx", "B、yyy"], "type": "0" }
+```
+
+服务同样能接，回它认识的形状：
+
+```json
+{ "code": 1, "msg": "ok", "data": { "answer": ["A、xxx"], "num": "", "usenum": "" } }
+```
+
+- `answer` 是**选项原文数组**（单选一个、多选多个），判断题回字符串 `对` / `错`，因为这类脚本是按选项文字做全等匹配的。
+- 模型返回字母（`A`）、带前缀（`A、`）、少个标点、轻微不一致时，服务会自动对回原始选项；对不上就回空，让脚本继续问别的题库。
+- 失败时回 `{"code": -1, "msg": "原因"}`，密钥不对的原因会原样告诉脚本。
+- 这类脚本的「题库地址」填 `http://127.0.0.1:8765`，「密钥」填本地访问密钥 `llm-xxxxxxxx` 即可，其余第三方题库（如 `http://cx.icodef.com/...`）失效也不影响本地这条链路。
 
 ## 脚本适配
 
