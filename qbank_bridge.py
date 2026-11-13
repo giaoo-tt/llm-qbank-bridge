@@ -35,7 +35,7 @@ from urllib import error as urlerror
 from urllib import request as urlrequest
 from urllib.parse import urlparse, parse_qs
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 # 打包成 exe 后：可写数据放 exe 旁边，内置资源在 PyInstaller 的临时解包目录
 if getattr(sys, "frozen", False):
     APP_DIR = os.path.dirname(os.path.abspath(sys.executable))

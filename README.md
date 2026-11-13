@@ -64,13 +64,13 @@ Windows 下也可以双击 `start.bat`：它会自动逐个探测可用的 Pytho
 
 ### 方式二：单文件 exe（推荐给不想装 Python 的人）
 
-到 [Releases](https://github.com/giaoo-tt/llm-qbank-bridge/releases) 下载 `qbank-v1.0.0-win64.zip`（约 8.2 MB），解压后双击 `qbank.exe` 即可，**无需安装 Python**。
+到 [Releases](https://github.com/giaoo-tt/llm-qbank-bridge/releases) 下载 `qbank-v1.0.1-win64.zip`（约 8.2 MB），解压后双击 `qbank.exe` 即可，**无需安装 Python**。
 
 - zip 内含 `qbank.exe`、`config.example.json` 和一份 `使用说明.txt`。
 - 首次运行会在 exe 同级目录生成 `config.json`，**不要放在 `C:\Program Files` 这类只读目录**，否则配置和缓存写不进去。
 - exe 未做数字签名，首次运行 SmartScreen 可能提示「已保护你的电脑」，点「更多信息 → 仍要运行」。
 
-发布说明见 [`docs/release-v1.0.0.md`](docs/release-v1.0.0.md)；想自己构建见下方「[打包](#打包)」。
+发布说明见 [`docs/release-v1.0.1.md`](docs/release-v1.0.1.md)；想自己构建见下方「[打包](#打包)」。
 
 ### 配置
 
@@ -221,6 +221,12 @@ PATH 里有个微软商店的假 `python.exe`（指向 `AppInstallerPythonRedire
 - 建议给 Key 设个额度上限，`quota` 字段也能在本地做费用熔断（`0` 表示只统计不限制）。
 
 ## 更新日志
+
+### v1.0.1
+
+- 新增 `POST /search` 题库海格式兼容接口：只会说 `{key, question}` 的老式第三方题库脚本可以直接把题库地址填成本机地址。
+- 答案会按「原文全等 → 去前缀标点 → 字母 → 相似度 0.72」四级对回选项原文，多选回数组、判断题回 `对`/`错`。
+- 脚本适配补丁新增识别 `http://api.tikuhai.com` 这一套脚本。
 
 ### v1.0.0
 
