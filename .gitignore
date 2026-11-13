@@ -1,0 +1,23 @@
+# 运行时数据（含 API Key / 访问密钥 / 缓存 / 用量），不要提交
+config.json
+cache.json
+usage.json
+
+# 打包产物与运行目录
+qbank/
+dist/
+build/
+*.spec
+*.exe
+
+# 脚本适配的生成物
+local-scripts/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# IDE
+.idea/
+.vscode/
+*.iml

@@ -1,0 +1,19 @@
+{
+  "provider": "openai",
+  "base_url": "https://api.deepseek.com/v1",
+  "api_key": "",
+  "model": "deepseek-chat",
+  "extra_headers": {},
+  "dify_user": "qbank-bridge",
+  "port": 8765,
+  "access_token": "",
+  "auth_mode": "strict",
+  "timeout": 12.0,
+  "temperature": 0,
+  "max_tokens": 512,
+  "workers": 4,
+  "system_prompt": "",
+  "quota": 0.0,
+  "price_in": 2.0,
+  "price_out": 8.0
+}

@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LLM 题库桥</title>
+<style>
+  :root{
+    --bg:#f4f7fc;
+    --card:#ffffff;
+    --line:#e5ecf6;
+    --line-soft:#eef3fa;
+    --text:#1c2430;
+    --muted:#6b7a90;
+    --accent:#176ae5;
+    --accent-soft:#eaf2ff;
+    --ok:#15803d;
+    --warn:#a15c08;
+    --err:#c73e38;
+    --shadow:0 1px 2px rgba(23,42,77,.05), 0 8px 24px -18px rgba(23,42,77,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font:14px/1.55 "Geist","Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:18px 20px 26px}
+
+  /* 顶栏 */
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .logo{
+    width:34px;height:34px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(140deg,#2f8bff,#176ae5);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;letter-spacing:.5px;
+    box-shadow:0 6px 16px -8px rgba(23,106,229,.9);
+  }
+  .titles h1{margin:0;font-size:15px;font-weight:650;letter-spacing:.2px}
+  .titles p{margin:1px 0 0;font-size:11.5px;color:var(--muted)}
+  .spacer{flex:1}
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 11px;border-radius:999px;font-size:12px;
+    background:#fff;border:1px solid var(--line);color:var(--muted);
+    white-space:nowrap;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:#b9c4d4}
+  .dot.on{background:#22b06b;box-shadow:0 0 0 3px rgba(34,176,107,.16)}
+  .dot.off{background:var(--err);box-shadow:0 0 0 3px rgba(199,62,56,.14)}
+
+  /* 布局 */
+  .grid{display:grid;grid-template-columns:400px minmax(0,1fr);gap:14px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:14px 15px;margin-bottom:12px;
+  }
+  .card:last-child{margin-bottom:0}
+  .card-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .card-h h2{margin:0;font-size:12.5px;font-weight:650;color:#2a3b52;letter-spacing:.3px}
+  .card-h .badge{
+    margin-left:auto;font-size:10.5px;color:var(--accent);background:var(--accent-soft);
+    padding:2px 8px;border-radius:999px;border:1px solid #dbe9ff;
+  }
+
+  .chk{
+    display:flex;align-items:center;gap:6px;margin-top:7px;
+    font-size:11.5px;color:#6b7a90;cursor:pointer;user-select:none;
+  }
+  .chk input{width:13px;height:13px;margin:0;accent-color:var(--accent)}
+  .authline{margin-top:7px;padding:6px 9px;border-radius:8px;background:#f7f9fd;border:1px dashed #dde6f3;font-size:11px}
+  .authline.ok{color:var(--ok);border-color:#c9ead7;background:#f4fcf7}
+  .authline.bad{color:var(--err);border-color:#f0d3d1;background:#fdf6f6}
+  .authline.warn{color:var(--warn);border-color:#f0e2c9;background:#fdfaf3}
+
+  /* 表单 */
+  .field{margin-bottom:9px}
+  .field:last-child{margin-bottom:0}
+  label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+  input,select{
+    width:100%;height:33px;padding:0 10px;border-radius:9px;border:1px solid var(--line);
+    background:#fbfcfe;color:var(--text);font:13px/1.4 inherit;outline:none;transition:.15s;
+  }
+  input:focus,select:focus{border-color:#a9c8f5;background:#fff;box-shadow:0 0 0 3px rgba(23,106,229,.1)}
+  input::placeholder{color:#a7b3c4}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .hint{font-size:11px;color:#93a0b3;margin-top:5px;line-height:1.5}
+
+  .inline{display:flex;gap:7px}
+  .inline input{flex:1}
+
+  button{
+    height:33px;padding:0 13px;border-radius:9px;border:1px solid var(--line);
+    background:#fff;color:#33445c;font:13px/1 inherit;cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  button:hover{border-color:#c9d8ec;background:#f9fbff}
+  button:active{transform:translateY(.5px)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+  button.primary:hover{background:#1260d0;border-color:#1260d0}
+  button.ghost{background:#f5f8fd}
+  button.sm{height:29px;padding:0 10px;font-size:12px;border-radius:8px}
+  button:disabled{opacity:.55;cursor:not-allowed}
+
+  .actions{display:flex;gap:8px;margin-top:11px}
+
+  /* 统计 */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .stat{
+    border:1px solid var(--line-soft);border-radius:11px;padding:9px 10px;background:#fbfcff;
+  }
+  .stat b{display:block;font-size:17px;font-weight:650;letter-spacing:.3px;font-variant-numeric:tabular-nums}
+  .stat span{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
+  .stat.ok b{color:var(--ok)}
+  .stat.hit b{color:var(--accent)}
+  .stat.bad b{color:var(--err)}
+
+  /* 日志 */
+  .logbox{
+    height:calc(100vh - 420px);min-height:210px;max-height:520px;overflow-y:auto;
+    background:#fbfcfe;border:1px solid var(--line-soft);border-radius:11px;padding:8px 10px;
+    font:12px/1.7 "Cascadia Mono",Consolas,"Microsoft YaHei",monospace;
+    scrollbar-width:thin;scrollbar-color:#ccd9ea transparent;
+  }
+  .logbox::-webkit-scrollbar{width:8px}
+  .logbox::-webkit-scrollbar-thumb{background:#ccd9ea;border-radius:8px}
+  .logline{display:flex;gap:8px;padding:1.5px 0;word-break:break-word}
+  .logline time{color:#a7b3c4;flex:0 0 auto}
+  .logline .m{color:#3b4a60}
+  .logline.ok .m{color:var(--ok)}
+  .logline.warn .m{color:var(--warn)}
+  .logline.err .m{color:var(--err)}
+  .empty{color:#a7b3c4;font-size:12px;padding:14px 2px;text-align:center}
+
+  /* 结果框 */
+  .result{
+    margin-top:9px;padding:9px 11px;border-radius:10px;font-size:12px;line-height:1.6;
+    border:1px solid var(--line-soft);background:#fbfcff;color:#42536b;
+  }
+  .result.ok{border-color:#c8ebd6;background:#f3fcf6;color:#15693b}
+  .result.bad{border-color:#f3d4d2;background:#fdf5f5;color:#a3352f}
+  .result b{font-weight:600}
+
+  /* 额度与用量 */
+  .uhead{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .uhead .stat b{font-size:16px}
+  .uhead .stat.cost b{color:#b06a13}
+  .ubar{margin-top:11px}
+  .ulbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;color:var(--muted);margin-bottom:5px}
+  .ulbl b{color:#33445c;font-variant-numeric:tabular-nums}
+  .utrack{height:7px;border-radius:6px;background:#eef3fa;overflow:hidden}
+  .ufill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#5a9bf5,#176ae5);transition:width .4s ease}
+  .ufill.warn{background:linear-gradient(90deg,#f0b34d,#e08a10)}
+  .ufill.danger{background:linear-gradient(90deg,#f08a7a,#d24a3a)}
+  .urow{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:11px}
+  .udetail{margin-top:10px;font-size:11.5px;line-height:1.85;color:var(--muted)}
+  .udetail b{color:#33445c;font-variant-numeric:tabular-nums;font-weight:600}
+  .udetail .sep{color:#d3ddea;margin:0 5px}
+
+  /* 步骤 */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:2px}
+  .step{padding:9px 10px;border-radius:10px;background:#fbfcff;border:1px solid var(--line-soft)}
+  .step i{
+    display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
+    background:var(--accent-soft);color:var(--accent);font-style:normal;font-size:10.5px;font-weight:650;margin-right:5px;
+  }
+  .step p{margin:4px 0 0;font-size:11px;color:var(--muted);line-height:1.5}
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);
+    background:#1e2a3a;color:#fff;padding:9px 16px;border-radius:10px;font-size:12.5px;
+    opacity:0;pointer-events:none;transition:.22s;box-shadow:0 12px 30px -12px rgba(0,0,0,.5);z-index:99;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .file-row{display:flex;gap:8px;align-items:center;margin-top:4px}
+  .file-name{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  details{margin-top:8px}
+  summary{font-size:11.5px;color:#7b8a9e;cursor:pointer;outline:none}
+  details p{margin:6px 0 0;font-size:11px;color:#8b98ab;line-height:1.65}
+  code{font-family:"Cascadia Mono",Consolas,monospace;font-size:11px;background:#eef3fa;padding:1px 4px;border-radius:4px;color:#3d5069}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="logo">LLM</div>
+    <div class="titles">
+      <h1>LLM 题库桥</h1>
+      <p>把你的大模型 / 知识库 API，变成油猴脚本能用的题库密钥</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill"><span class="dot" id="dot"></span><span id="statusText">正在连接本地服务…</span></div>
+  </div>
+
+  <div class="grid">
+    <!-- 左列 -->
+    <div>
+      <section class="card">
+        <div class="card-h"><h2>模型接口</h2><span class="badge" id="providerBadge">OpenAI 兼容</span></div>
+
+        <div class="field">
+          <label>接口类型</label>
+          <select id="provider">
+            <option value="openai">OpenAI 兼容（DeepSeek / 百炼 / 智谱 / FastGPT…）</option>
+            <option value="dify">Dify 应用（/chat-messages）</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>API 地址</label>
+          <input id="base_url" placeholder="https://api.deepseek.com/v1" spellcheck="false" />
+          <div class="hint" id="baseHint">填到 /v1 或 /chat/completions 都可以</div>
+        </div>
+
+        <div class="field">
+          <label>API Key</label>
+          <input id="api_key" type="password" placeholder="sk-..." spellcheck="false" />
+        </div>
+
+        <div class="field">
+          <label>模型名称 / 知识库应用 ID</label>
+          <input id="model" placeholder="deepseek-chat" spellcheck="false" />
+        </div>
+
+        <div class="row-3">
+          <div class="field"><label>超时(秒)</label><input id="timeout" type="number" min="3" max="14" step="1" /></div>
+          <div class="field"><label>并发</label><input id="workers" type="number" min="1" max="12" step="1" /></div>
+          <div class="field"><label>最大输出</label><input id="max_tokens" type="number" min="64" max="2048" step="64" /></div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="btnSave">保存配置</button>
+          <button id="btnTest">测试出题</button>
+        </div>
+        <div id="testResult" class="result" style="display:none"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><h2>本地密钥</h2><span class="badge" id="cacheBadge">缓存 0</span></div>
+
+        <div class="field">
+          <label>访问密钥（填进脚本「答题」页的密钥框）</label>
+          <div class="inline">
+            <input id="access_token" spellcheck="false" />
+            <button class="sm" id="btnToken">换一个</button>
+            <button class="sm" id="btnCopyToken">复制</button>
+          </div>
+          <label class="chk"><input type="checkbox" id="auth_any" /> 不校验密钥（脚本里随便填都能用，仅限本机）</label>
+          <div class="hint authline" id="lastAuth">还没有收到过脚本请求</div>
+        </div>
+
+        <div class="field">
+          <label>本地接口地址</label>
+          <div class="inline">
+            <input id="endpoint" readonly />
+            <button class="sm" id="btnCopyEndpoint">复制</button>
+          </div>
+          <div class="hint">脚本要请求 <code>/api/open/v1/search/exact</code>，改端口后需重启程序</div>
+        </div>
+
+        <div class="row">
+          <div class="field"><label>端口</label><input id="port" type="number" min="1024" max="65535" step="1" /></div>
+          <div class="field"><label>温度</label><input id="temperature" type="number" min="0" max="2" step="0.1" /></div>
+        </div>
+
+        <div class="actions">
+          <button class="ghost sm" id="btnClearCache">清空答案缓存</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><h2>脚本适配</h2><span class="badge">一键改好</span></div>
+        <p class="hint" style="margin:0 0 8px">选择你的 <code>.user.js</code> 脚本文件，自动把接口指向本机并放行 127.0.0.1。</p>
+        <div class="file-row">
+          <input type="file" id="scriptFile" accept=".js,.user.js,text/javascript" style="height:auto;padding:5px 8px;font-size:12px" />
+        </div>
+        <div class="file-name" id="fileName" style="margin-top:6px"></div>
+        <div id="patchResult" class="result" style="display:none"></div>
+
+        <details>
+          <summary>或者手动改 3 处</summary>
+          <p>
+            1. 在 <code>// @connect search.tikuhai.com</code> 下面加一行 <code>// @connect 127.0.0.1</code><br>
+            2. 把脚本里所有 <code>https://search.tikuhai.com</code> 换成你的本地地址（如 <code>http://127.0.0.1:8765</code>）<br>
+            3. 把 <code>baseUrl.protocol !== "https:"</code> 改成
+            <code>["https:", "http:"].indexOf(baseUrl.protocol) === -1</code>
+          </p>
+        </details>
+      </section>
+    </div>
+
+    <!-- 右列 -->
+    <div>
+      <section class="card">
+        <div class="card-h"><h2>运行概览</h2><span class="badge" id="uptime" style="display:none"></span></div>
+        <div class="stats">
+          <div class="stat"><b id="sTotal">0</b><span>收到题目</span></div>
+          <div class="stat ok"><b id="sOk">0</b><span>有答案</span></div>
+          <div class="stat hit"><b id="sHit">0</b><span>缓存命中</span></div>
+          <div class="stat bad"><b id="sBad">0</b><span>失败/无答案</span></div>
+        </div>
+        <div class="hint" style="margin-top:9px">
+          平均耗时 <b id="sAvg">-</b> · 缓存条目 <b id="sCache">0</b> · 本页把答案在本地缓存，同一题不会重复消耗额度
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><h2>额度与用量</h2><span class="badge" id="uBadge">今日 0 tokens</span></div>
+        <div class="uhead">
+          <div class="stat"><b id="uToday">0</b><span>今日 tokens</span></div>
+          <div class="stat hit"><b id="uAll">0</b><span>累计 tokens</span></div>
+          <div class="stat cost"><b id="uCost">¥0.00</b><span>累计花费</span></div>
+        </div>
+        <div class="ubar">
+          <div class="ulbl"><span id="uQuotaLbl">未设置额度，只统计花费</span><span id="uPct">—</span></div>
+          <div class="utrack"><div class="ufill" id="uFill"></div></div>
+        </div>
+        <div class="urow">
+          <div class="field"><label>总额度（元）</label><input id="quota" type="number" min="0" step="1" placeholder="0 表示不限制" /></div>
+          <div class="field"><label>输入价（元/百万）</label><input id="price_in" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>输出价（元/百万）</label><input id="price_out" type="number" min="0" step="0.01" /></div>
+        </div>
+        <div class="udetail">
+          今日<span class="sep">·</span>输入 <b id="uTodayIn">0</b><span class="sep">·</span>输出 <b id="uTodayOut">0</b><span class="sep">·</span>调用 <b id="uTodayCalls">0</b> 次<br>
+          累计<span class="sep">·</span>输入 <b id="uAllIn">0</b><span class="sep">·</span>输出 <b id="uAllOut">0</b><span class="sep">·</span>调用 <b id="uAllCalls">0</b> 次
+        </div>
+        <div class="actions">
+          <button class="primary sm" id="btnUsageSave">保存额度设置</button>
+          <button class="sm ghost" id="btnUsageReset">重置统计</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><h2>实时日志</h2><span class="badge">最新在上</span></div>
+        <div class="logbox" id="logbox"><div class="empty">等待脚本发来第一道题…</div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><h2>四步用起来</h2></div>
+        <div class="steps">
+          <div class="step"><i>1</i><b>填模型</b><p>接口、Key、模型名，点「测试出题」确认通</p></div>
+          <div class="step"><i>2</i><b>复制密钥</b><p>上面那串 <code>llm-</code> 开头的就是密钥</p></div>
+          <div class="step"><i>3</i><b>装适配脚本</b><p>选原脚本文件生成新版，装进油猴</p></div>
+          <div class="step"><i>4</i><b>粘贴密钥</b><p>在脚本「答题」页填入密钥后刷新</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let cursor = 0;
+let logCount = 0;
+let loaded = false;
+let startedAt = Date.now();
+
+function toast(msg){
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1900);
+}
+
+async function api(path, body){
+  const opt = body === undefined ? {} : {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  };
+  const resp = await fetch(path, opt);
+  return resp.json();
+}
+
+function setStatus(ok, text){
+  $('dot').className = 'dot ' + (ok ? 'on' : 'off');
+  $('statusText').textContent = text;
+}
+
+function fillForm(cfg){
+  $('provider').value = cfg.provider || 'openai';
+  $('base_url').value = cfg.base_url || '';
+  $('api_key').value = cfg.api_key || '';
+  $('model').value = cfg.model || '';
+  $('timeout').value = cfg.timeout || 12;
+  $('workers').value = cfg.workers || 4;
+  $('max_tokens').value = cfg.max_tokens || 512;
+  $('access_token').value = cfg.access_token || '';
+  $('auth_any').checked = (cfg.auth_mode || 'strict') === 'any';
+  $('port').value = cfg.port || 8765;
+  $('temperature').value = cfg.temperature ?? 0;
+  $('quota').value = cfg.quota ? cfg.quota : '';
+  $('price_in').value = cfg.price_in ?? 2;
+  $('price_out').value = cfg.price_out ?? 8;
+  $('endpoint').value = location.origin;
+  syncProviderHint();
+}
+
+function syncProviderHint(){
+  const dify = $('provider').value === 'dify';
+  $('providerBadge').textContent = dify ? 'Dify 应用' : 'OpenAI 兼容';
+  $('baseHint').textContent = dify
+    ? '填到 /v1，例如 https://api.dify.ai/v1'
+    : '填到 /v1 或 /chat/completions 都可以';
+  $('model').placeholder = dify ? 'Dify 可留空' : 'deepseek-chat';
+}
+
+function addLogs(items){
+  const box = $('logbox');
+  if (!items.length) return;
+  if (!logCount) box.innerHTML = '';
+  for (const item of items){
+    const div = document.createElement('div');
+    div.className = 'logline ' + (item.lvl || 'info');
+    const t = document.createElement('time');
+    t.textContent = item.t;
+    const m = document.createElement('span');
+    m.className = 'm';
+    m.textContent = item.msg;
+    div.appendChild(t);
+    div.appendChild(m);
+    box.insertBefore(div, box.firstChild);
+    logCount++;
+  }
+  while (logCount > 300 && box.lastChild){
+    box.removeChild(box.lastChild);
+    logCount--;
+  }
+}
+
+function renderStats(data){
+  const s = data.stats || {};
+  $('sTotal').textContent = s.total || 0;
+  $('sOk').textContent = s.ok || 0;
+  $('sHit').textContent = s.cache_hits || 0;
+  $('sBad').textContent = (s.error || 0) + (s.none || 0);
+  $('sCache').textContent = data.cache_size || 0;
+  $('cacheBadge').textContent = '缓存 ' + (data.cache_size || 0);
+  const avg = (s.ok > 0 && s.total_ms > 0) ? Math.round(s.total_ms / s.ok) : 0;
+  $('sAvg').textContent = avg ? avg + ' ms' : '-';
+}
+
+function fmtNum(n){
+  n = Math.round(Number(n) || 0);
+  if (n >= 1e8) return (n / 1e8).toFixed(2) + ' 亿';
+  if (n >= 1e4) return (n / 1e4).toFixed(1) + ' 万';
+  return n.toLocaleString('zh-CN');
+}
+
+function money(v){
+  v = Number(v) || 0;
+  if (v > 0 && v < 0.01) return '¥' + v.toFixed(4);   // 小额别显示成 0.00
+  if (v > 0 && v < 1) return '¥' + v.toFixed(3);
+  return '¥' + v.toFixed(2);
+}
+
+function renderUsage(u){
+  if (!u) return;
+  const t = u.today || {}, a = u.all || {};
+  $('uToday').textContent = fmtNum(t.total);
+  $('uAll').textContent = fmtNum(a.total);
+  $('uCost').textContent = money(u.cost_all);
+  $('uBadge').textContent = '今日 ' + fmtNum(t.total) + ' tokens';
+  $('uTodayIn').textContent = fmtNum(t.prompt);
+  $('uTodayOut').textContent = fmtNum(t.completion);
+  $('uTodayCalls').textContent = t.calls || 0;
+  $('uAllIn').textContent = fmtNum(a.prompt);
+  $('uAllOut').textContent = fmtNum(a.completion);
+  $('uAllCalls').textContent = a.calls || 0;
+
+  const fill = $('uFill');
+  if (Number(u.quota) > 0){
+    const pct = Math.min(100, Number(u.used_pct) || 0);
+    $('uQuotaLbl').innerHTML = '已用 <b>' + money(u.cost_all) + '</b> / 额度 <b>' + money(u.quota) +
+      '</b> · 剩余 <b>' + money(u.remaining) + '</b>';
+    $('uPct').textContent = pct > 0 && pct < 0.1 ? '<0.1%' : pct.toFixed(1) + '%';
+    fill.style.width = pct > 0 ? Math.max(2, pct) + '%' : '0%';   // 微量消耗也留一点可见
+    fill.className = 'ufill' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
+  } else {
+    $('uQuotaLbl').textContent = '未设置总额度，只统计花费';
+    $('uPct').textContent = '今日 ' + money(u.cost_today);
+    fill.style.width = '0%';
+    fill.className = 'ufill';
+  }
+}
+
+function renderAuth(data){
+  const a = data.last_auth || {};
+  const el = $('lastAuth');
+  if (!a.t){
+    el.className = 'hint authline';
+    el.textContent = '还没收到过任何请求 —— 脚本大概率还在连原来的服务器，或没加 @connect';
+    return;
+  }
+  const stem = a.stem ? ' · ' + a.stem : '';
+  if (a.result === 'ok'){
+    el.className = 'hint authline ok';
+    el.textContent = a.t + ' 密钥匹配，正在答题' + stem;
+  } else if (a.result === 'mismatch'){
+    el.className = 'hint authline bad';
+    el.textContent = a.t + ' 密钥不匹配 —— 脚本带来「' + a.token + '」';
+  } else {
+    el.className = 'hint authline warn';
+    el.textContent = a.t + ' 请求到了，但脚本没带密钥' + stem;
+  }
+}
+
+async function poll(){
+  try {
+    const data = await api('/api/state?since=' + cursor);
+    setStatus(true, '服务运行中 · ' + location.host);
+    if (!loaded && data.config){
+      fillForm(data.config);
+      loaded = true;
+    }
+    if (typeof data.cursor === 'number' && data.cursor > cursor) cursor = data.cursor;
+    addLogs(data.logs || []);
+    renderStats(data);
+    renderUsage(data.usage);
+    renderAuth(data);
+  } catch (err){
+    setStatus(false, '本地服务未响应');
+  }
+}
+
+async function collectConfig(){
+  return {
+    provider: $('provider').value,
+    base_url: $('base_url').value.trim(),
+    api_key: $('api_key').value.trim(),
+    model: $('model').value.trim(),
+    timeout: parseFloat($('timeout').value) || 12,
+    workers: parseInt($('workers').value) || 4,
+    max_tokens: parseInt($('max_tokens').value) || 512,
+    access_token: $('access_token').value.trim(),
+    auth_mode: $('auth_any').checked ? 'any' : 'strict',
+    port: parseInt($('port').value) || 8765,
+    temperature: parseFloat($('temperature').value) || 0,
+    quota: parseFloat($('quota').value) || 0,
+    price_in: parseFloat($('price_in').value) || 0,
+    price_out: parseFloat($('price_out').value) || 0
+  };
+}
+
+$('btnSave').onclick = async () => {
+  const cfg = await collectConfig();
+  const res = await api('/api/config', {config: cfg});
+  if (res.ok){
+    fillForm(res.config);
+    toast(res.restart_needed ? '已保存，端口/并发改动需重启程序' : '配置已保存');
+  } else {
+    toast('保存失败');
+  }
+};
+
+$('btnUsageSave').onclick = async () => {
+  const res = await api('/api/config', {config: await collectConfig()});
+  if (res.ok){
+    fillForm(res.config);
+    toast('额度设置已保存');
+  } else {
+    toast('保存失败');
+  }
+};
+
+$('btnUsageReset').onclick = async () => {
+  if (!confirm('确定把用量统计归零吗？累计 token 与花费都会清零，额度也会重新计算。')) return;
+  const res = await api('/api/usage/reset', {scope: 'all'});
+  if (res.ok){
+    renderUsage(res.usage);
+    toast('用量统计已重置');
+  } else {
+    toast('重置失败');
+  }
+};
+
+$('btnTest').onclick = async () => {
+  const btn = $('btnTest');
+  btn.disabled = true;
+  btn.textContent = '测试中…';
+  $('testResult').style.display = 'none';
+  try {
+    await api('/api/config', {config: await collectConfig()});
+    const res = await api('/api/test', {});
+    const box = $('testResult');
+    box.style.display = 'block';
+    if (res.ok){
+      const vals = (res.values && res.values.length) ? res.values.join(' / ') : '（空）';
+      box.className = 'result ok';
+      box.innerHTML = '<b>接口正常</b> · 用例「中国的首都是哪座城市」<br>模型答案：' + escapeHtml(vals) +
+        '<br>耗时 ' + res.elapsed_ms + ' ms';
+    } else {
+      box.className = 'result bad';
+      box.innerHTML = '<b>调用失败</b><br>' + escapeHtml(res.message || '未知错误');
+    }
+  } catch (err){
+    const box = $('testResult');
+    box.style.display = 'block';
+    box.className = 'result bad';
+    box.textContent = '请求本地服务失败：' + err;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '测试出题';
+  }
+};
+
+$('btnToken').onclick = () => {
+  const rand = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+    .map(b => b.toString(16).padStart(2,'0')).join('');
+  $('access_token').value = 'llm-' + rand;
+  toast('已生成新密钥，记得点「保存配置」');
+};
+
+$('btnCopyToken').onclick = () => copyText($('access_token').value, '密钥已复制');
+$('btnCopyEndpoint').onclick = () => copyText($('endpoint').value, '接口地址已复制');
+
+async function copyText(text, okMsg){
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(okMsg);
+  } catch (e){
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast(okMsg);
+  }
+}
+
+$('btnClearCache').onclick = async () => {
+  await api('/api/cache/clear', {});
+  toast('缓存已清空');
+  poll();
+};
+
+$('provider').onchange = () => {
+  syncProviderHint();
+  if ($('provider').value === 'dify'){
+    if ($('base_url').value.includes('deepseek')) $('base_url').value = 'https://api.dify.ai/v1';
+  }
+};
+
+$('scriptFile').onchange = async (ev) => {
+  const file = ev.target.files[0];
+  $('fileName').textContent = file ? file.name : '';
+  const box = $('patchResult');
+  box.style.display = 'none';
+  if (!file) return;
+
+  const text = await file.text();
+  if (!/==UserScript==/.test(text)){
+    box.style.display = 'block';
+    box.className = 'result bad';
+    box.textContent = '这个文件看起来不是油猴脚本。';
+    return;
+  }
+
+  const res = await api('/api/patch', {text});
+  if (!res.ok){
+    box.style.display = 'block';
+    box.className = 'result bad';
+    box.textContent = res.message || '生成失败';
+    return;
+  }
+
+  const blob = new Blob([res.text], {type:'text/javascript;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = res.filename || 'local-bank.user.js';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+  box.style.display = 'block';
+  box.className = 'result ok';
+  box.innerHTML = '<b>已生成适配版</b><br>' + escapeHtml(res.changes.join('；')) +
+    (res.saved_path ? '<br>已存到：<code>' + escapeHtml(res.saved_path) + '</code>' : '') +
+    '<br>装法：油猴「管理面板 → 实用工具 → 从文件导入」，选这个文件；' +
+    '装好后把原来的脚本禁用，再刷新答题页面。';
+};
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+setInterval(poll, 1200);
+poll();
+</script>
+</body>
+</html>
